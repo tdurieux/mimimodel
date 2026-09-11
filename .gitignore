@@ -25,3 +25,7 @@ bench/results.json
 bench/.ma_queries.*.txt
 bench/mobile_actions.jsonl
 .DS_Store
+
+.optimization/
+
+optimization/results/

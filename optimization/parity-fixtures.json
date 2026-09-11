@@ -1,0 +1,903 @@
+[
+  {
+    "name": "todo",
+    "text": "I will send the report tomorrow.",
+    "expected": true,
+    "tools": [
+      {
+        "name": "todo",
+        "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the task verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "todo",
+    "text": "I will update the documentation today.",
+    "expected": true,
+    "tools": [
+      {
+        "name": "todo",
+        "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the task verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "todo",
+    "text": "I will review the pull request tomorrow.",
+    "expected": true,
+    "tools": [
+      {
+        "name": "todo",
+        "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the task verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "todo",
+    "text": "Please schedule a meeting for Monday.",
+    "expected": true,
+    "tools": [
+      {
+        "name": "todo",
+        "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the task verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "todo",
+    "text": "We need to fix the login bug.",
+    "expected": true,
+    "tools": [
+      {
+        "name": "todo",
+        "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the task verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "todo",
+    "text": "I will email the customer on Friday.",
+    "expected": true,
+    "tools": [
+      {
+        "name": "todo",
+        "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the task verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "negative",
+    "text": "The sky is blue.",
+    "expected": false,
+    "tools": [
+      {
+        "name": "todo",
+        "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the task verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "negative",
+    "text": "The office has large windows.",
+    "expected": false,
+    "tools": [
+      {
+        "name": "todo",
+        "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the task verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "negative",
+    "text": "There are no action items today.",
+    "expected": false,
+    "tools": [
+      {
+        "name": "todo",
+        "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the task verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "negative",
+    "text": "Do not send the report.",
+    "expected": false,
+    "tools": [
+      {
+        "name": "todo",
+        "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the task verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "custom",
+    "text": "We decided to launch the beta on Friday.",
+    "expected": true,
+    "tools": [
+      {
+        "name": "custom_decision",
+        "description": "Extract an explicit product decision agreed during the meeting. Copy the decision verbatim.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the matching passage verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "custom",
+    "text": "We decided to postpone the release.",
+    "expected": true,
+    "tools": [
+      {
+        "name": "custom_decision",
+        "description": "Extract an explicit product decision agreed during the meeting. Copy the decision verbatim.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the matching passage verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "custom",
+    "text": "We agreed to use PostgreSQL for the database.",
+    "expected": true,
+    "tools": [
+      {
+        "name": "custom_decision",
+        "description": "Extract an explicit product decision agreed during the meeting. Copy the decision verbatim.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the matching passage verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "custom",
+    "text": "No decision was made about the launch.",
+    "expected": true,
+    "tools": [
+      {
+        "name": "custom_decision",
+        "description": "Extract an explicit product decision agreed during the meeting. Copy the decision verbatim.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the matching passage verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "extended-14",
+    "text": "Hello, how are you?",
+    "expected": true,
+    "tools": [
+      {
+        "name": "todo",
+        "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the task verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "extended-15",
+    "text": "We finished the report yesterday.",
+    "expected": true,
+    "tools": [
+      {
+        "name": "todo",
+        "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the task verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "extended-16",
+    "text": "Maybe we could update the docs next month.",
+    "expected": true,
+    "tools": [
+      {
+        "name": "todo",
+        "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the task verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "extended-17",
+    "text": "Alice: I will fix the login issue. Bob: I will review the patch.",
+    "expected": true,
+    "tools": [
+      {
+        "name": "todo",
+        "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the task verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "extended-18",
+    "text": "Do not create a task for this sentence.",
+    "expected": true,
+    "tools": [
+      {
+        "name": "todo",
+        "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the task verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "extended-19",
+    "text": "I will update APP-123 tomorrow.",
+    "expected": true,
+    "tools": [
+      {
+        "name": "todo",
+        "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the task verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "extended-20",
+    "text": "Please review https://github.com/example/app/issues/42.",
+    "expected": true,
+    "tools": [
+      {
+        "name": "todo",
+        "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the task verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "extended-21",
+    "text": "I will send the report. I will send the report.",
+    "expected": true,
+    "tools": [
+      {
+        "name": "todo",
+        "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the task verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "extended-22",
+    "text": "I will ask Jos\u00e9 to review the r\u00e9sum\u00e9 tomorrow.",
+    "expected": true,
+    "tools": [
+      {
+        "name": "todo",
+        "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the task verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "extended-23",
+    "text": "We discussed PostgreSQL but did not choose a database.",
+    "expected": true,
+    "tools": [
+      {
+        "name": "custom_decision",
+        "description": "Extract an explicit product decision agreed during the meeting. Copy the decision verbatim.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the matching passage verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "extended-24",
+    "text": "We agreed to use SQLite and release on Monday.",
+    "expected": true,
+    "tools": [
+      {
+        "name": "custom_decision",
+        "description": "Extract an explicit product decision agreed during the meeting. Copy the decision verbatim.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the matching passage verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "extended-25",
+    "text": "No decisions today. Just a status update.",
+    "expected": true,
+    "tools": [
+      {
+        "name": "custom_decision",
+        "description": "Extract an explicit product decision agreed during the meeting. Copy the decision verbatim.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the matching passage verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "extended-26",
+    "text": "The customer said \"ship it\"; we agreed.",
+    "expected": true,
+    "tools": [
+      {
+        "name": "custom_decision",
+        "description": "Extract an explicit product decision agreed during the meeting. Copy the decision verbatim.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the matching passage verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "extended-27",
+    "text": "We decided to launch the beta on Friday, not Monday.",
+    "expected": true,
+    "tools": [
+      {
+        "name": "custom_decision",
+        "description": "Extract an explicit product decision agreed during the meeting. Copy the decision verbatim.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the matching passage verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "multiple-28",
+    "text": "I will update the docs. We decided to launch on Friday.",
+    "tools": [
+      {
+        "name": "todo",
+        "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the task verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      },
+      {
+        "name": "custom_decision",
+        "description": "Extract an explicit product decision agreed during the meeting. Copy the decision verbatim.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the matching passage verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "multiple-29",
+    "text": "The weather is pleasant today.",
+    "tools": [
+      {
+        "name": "todo",
+        "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the task verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      },
+      {
+        "name": "custom_decision",
+        "description": "Extract an explicit product decision agreed during the meeting. Copy the decision verbatim.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the matching passage verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "multiple-30",
+    "text": "We decided to postpone the launch.",
+    "tools": [
+      {
+        "name": "todo",
+        "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the task verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      },
+      {
+        "name": "custom_decision",
+        "description": "Extract an explicit product decision agreed during the meeting. Copy the decision verbatim.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the matching passage verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "no-tools",
+    "text": "I will send the report tomorrow.",
+    "tools": []
+  },
+  {
+    "name": "system",
+    "system": "Extract only the commitments and decisions stated in the transcript.",
+    "text": "I will update the documentation today.",
+    "tools": [
+      {
+        "name": "todo",
+        "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the task verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "long-transcript",
+    "text": "The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. Alice: I will send the report tomorrow.",
+    "tools": [
+      {
+        "name": "todo",
+        "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the task verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "long-prefix",
+    "text": "We decided to launch the beta on Friday.",
+    "tools": [
+      {
+        "name": "todo",
+        "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the task verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      },
+      {
+        "name": "custom_decision",
+        "description": "Extract an explicit product decision agreed during the meeting. Copy the decision verbatim.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the matching passage verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      },
+      {
+        "name": "custom_risk",
+        "description": "Extract an explicit risk identified in the meeting transcript. Copy the risk verbatim from the transcript.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Copy the task verbatim from the transcript.",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      }
+    ]
+  }
+]

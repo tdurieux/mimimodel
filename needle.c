@@ -4,8 +4,8 @@
  * (ESP-IDF component; weights memory-mapped from a flash partition).
  *
  * Format/math reference: needle/needle/model/{export,decode,architecture}.py
- * Validated token-for-token against needle_np.py (which is validated against
- * the official JAX implementation).
+ * Linux behavior is checked against pinned libneedle 2.0.4. Runtime int8
+ * quantization differs from the original floating-point JAX reference.
  *
  * Weights stay in-place (mmap'd flash on ESP32): CQ-packed matrices are
  * dequantized on the fly inside the matvec using the Hadamard identity
@@ -18,6 +18,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+/* Desktop parity kernels and caches must not enter the embedded build. */
+#if !defined(ESP_PLATFORM)
+#define NEEDLE_LIBNEEDLE_PARITY 1
+#endif
 
 /* ------------------------------------------------------------------ config */
 
@@ -90,6 +95,9 @@ static inline void *aligned_alloc16(size_t sz) {
 #define MAX_TABLES   8
 #define MAX_LANES    8
 #define MAX_TAPS     8
+
+/* Round quantized values in [-127, 127] halfway away from zero. */
+static inline int quant_round(float x) { return (int)lroundf(x); }
 
 /* ------------------------------------------------------------ fp16 helpers */
 
@@ -167,11 +175,11 @@ typedef struct {
 
     const uint8_t *blob;   /* whole .cact in memory / mapped flash */
     float codebook[28];    /* cb2[4] | cb3[8] | cb4[16] */
-    __attribute__((aligned(16))) float lut2[256][4];
+    float lut2[256][4];
                                       /* byte -> 4 decoded 2-bit values */
     float lut4[256][2];    /* byte -> 2 decoded 4-bit codebook values */
-    /* int16 mirrors of the same LUTs, for the SIMD/integer matvec path.
-     * Weight value == lut*_i16[b][j] * cb*_scale  (exact: only 4/16 levels) */
+    /* libneedle uses int8 codebook levels. Store them in int16 lanes for
+     * portable signed SIMD dot products on SSE2 and ESP32. */
     int16_t lut2_i16[256][4];
     int16_t lut4_i16[256][2];
     float cb2_scale, cb4_scale;
@@ -201,7 +209,7 @@ typedef struct {
     uint32_t max_len, kv_alloc;   /* prefix sink followed by a recent-token ring */
     uint32_t sink_len;
     int8_t  *k_cache, *v_cache;   /* (L, n_kv, max_len, head_dim) int8 */
-    float   *k_scale, *v_scale;   /* (L, n_kv, max_len) */
+    float *k_scale, *v_scale;     /* (L, n_kv, max_len) */
     float   *ering;               /* engram v ring (n_sites, depth, C) */
     uint8_t *ering_valid;
     uint32_t ering_depth, epos;
@@ -343,7 +351,11 @@ static void load_tokenizer(Needle *m, const uint8_t *blob, uint64_t nbytes) {
             }
 }
 
+static void needle_host_cache_clear(void);
+static void phi_cache_clear(void);
+
 int needle_load(Needle *m, const uint8_t *blob, uint64_t size) {
+    needle_host_cache_clear();
     memset(m, 0, sizeof(*m));
     m->blob = blob;
     (void)size;
@@ -375,6 +387,16 @@ int needle_load(Needle *m, const uint8_t *blob, uint64_t size) {
         float mx2 = 0, mx4 = 0;
         for (int i = 0; i < 4; i++)  if (fabsf(m->codebook[i]) > mx2) mx2 = fabsf(m->codebook[i]);
         for (int i = 12; i < 28; i++) if (fabsf(m->codebook[i]) > mx4) mx4 = fabsf(m->codebook[i]);
+#ifdef NEEDLE_LIBNEEDLE_PARITY
+        m->cb2_scale = mx2 / 127.0f;
+        m->cb4_scale = mx4 / 127.0f;
+        for (int b = 0; b < 256; b++) {
+            for (int j = 0; j < 4; j++)
+                m->lut2_i16[b][j] = (int16_t)quant_round(m->lut2[b][j] / m->cb2_scale);
+            for (int j = 0; j < 2; j++)
+                m->lut4_i16[b][j] = (int16_t)quant_round(m->lut4[b][j] / m->cb4_scale);
+        }
+#else
         m->cb2_scale = mx2 / 32767.0f;
         m->cb4_scale = mx4 / 32767.0f;
         for (int b = 0; b < 256; b++) {
@@ -383,6 +405,7 @@ int needle_load(Needle *m, const uint8_t *blob, uint64_t size) {
             for (int j = 0; j < 2; j++)
                 m->lut4_i16[b][j] = (int16_t)lrintf(m->lut4[b][j] / m->cb4_scale);
         }
+#endif
     }
 
     g_base = blob;
@@ -435,8 +458,29 @@ static inline int prep_slot(const Needle *m, const float *xh) {
     return xh == m->xh2 ? 1 : 0;
 }
 
-static void cq_prepare_x(const Needle *m, const CQMat *W, const float *x,
-                         float *xh /* in_pad */) {
+
+#ifdef NEEDLE_LIBNEEDLE_PARITY
+static int cq_is_phi(const Needle *m, const CQMat *w) {
+    const CQMat *matrices[] = {&m->phi_pre, &m->phi_post, &m->phi_res};
+    uintptr_t key = (uintptr_t)w->packed;
+    for (unsigned i = 0; i < 3; i++) {
+        const CQMat *p = matrices[i];
+        uintptr_t begin = (uintptr_t)p->packed;
+        size_t bytes = (size_t)p->out * p->in_pad * p->bits / 8;
+        if (key >= begin && key - begin < bytes)
+            return 1;
+    }
+    return 0;
+}
+
+#endif
+static void cq_prepare_x(const Needle *m, const CQMat *W, const float *x, float *xh /* in_pad */) {
+#ifdef NEEDLE_LIBNEEDLE_PARITY
+    if (cq_is_phi(m, W)) {
+        memcpy(xh, x, W->in * 4);
+        return;
+    }
+#endif
     uint32_t G = W->group;
     float inv = 1.0f / sqrtf((float)G);
     int slot = prep_slot(m, xh);
@@ -452,19 +496,32 @@ static void cq_prepare_x(const Needle *m, const CQMat *W, const float *x,
         for (uint32_t k = 0; k < G; k++) {
             xh[g + k] *= inv;
             float a = fabsf(xh[g + k]);
-            if (a > mx) mx = a;
+            if (a > mx)
+                mx = a;
         }
-        /* per-group symmetric int16 quantization; 15 bits is far more than
-         * the 2/4-bit weights need, so this costs no measurable accuracy */
+#ifdef NEEDLE_LIBNEEDLE_PARITY
+        /* Match libneedle's groupwise int8 activation quantization. */
+        if (mx < 1e-30f) {
+            memset(xq + g, 0, G * sizeof(int16_t));
+            xs[g / G] = 0.0f;
+        } else {
+            float q = 1.0f / (mx / 127.0f);
+            xs[g / G] = mx / 127.0f;
+            for (uint32_t k = 0; k < G; ++k)
+                xq[g + k] = (int16_t)quant_round(xh[g + k] * q);
+        }
+#else
+        /* Preserve the embedded int16 activation path. */
         if (mx < 1e-30f) {
             memset(xq + g, 0, G * sizeof(int16_t));
             xs[g / G] = 0.0f;
         } else {
             float q = 32767.0f / mx;
             xs[g / G] = mx / 32767.0f;
-            for (uint32_t k = 0; k < G; k++)
+            for (uint32_t k = 0; k < G; ++k)
                 xq[g + k] = (int16_t)lrintf(xh[g + k] * q);
         }
+#endif
     }
 }
 
@@ -537,10 +594,25 @@ static void cq_matvec_i16(const Needle *m, const CQMat *W, const float *xh,
                     memcpy(wbuf + k, m->lut4_i16[bp[k >> 1]], 2 * sizeof(int16_t));
             }
             int64_t d = dot_i16(wbuf, xq + g * G, (int)G);
+#ifdef NEEDLE_LIBNEEDLE_PARITY
+            acc += (float)d * xs[g] * wscale * fp16_to_f32(nrm[g]);
+#else
             acc += (float)d * xs[g] * fp16_to_f32(nrm[g]);
+#endif
         }
+#ifdef NEEDLE_LIBNEEDLE_PARITY
+        y[r] = acc;
+#else
         y[r] = acc * wscale;
+#endif
     }
+}
+
+
+
+// Host caches follow the engine's existing single-active-model lifetime.
+static void needle_host_cache_clear(void) {
+    phi_cache_clear();
 }
 
 /* 2-bit quad-row kernel: four rows share each activation load. */
@@ -634,8 +706,17 @@ static void cq_matvec_2b_tie728(const Needle *m, const CQMat *W,
 }
 #endif
 
+#ifdef NEEDLE_LIBNEEDLE_PARITY
+static void phi_native(const Needle*, const CQMat*, const float*, float*);
+#endif
 static void cq_matvec(const Needle *m, const CQMat *W, const float *xh,
                       float *y) {
+#ifdef NEEDLE_LIBNEEDLE_PARITY
+    if (cq_is_phi(m, W)) { phi_native(m,W,xh,y); return; }
+#endif
+#ifdef NEEDLE_LIBNEEDLE_PARITY
+    if (W->bits == 2 || W->bits == 4) { cq_matvec_i16(m, W, xh, y); return; }
+#endif
     /* The integer path only wins where a SIMD MAC exists: on scalar cores the
      * weight-decode round trip costs more than it saves, and the host's
      * auto-vectorized float loops are faster still. */
@@ -1001,10 +1082,80 @@ static void cq_row(const Needle *m, const CQMat *W, uint32_t r, float *out) {
     }
 }
 
+#ifdef NEEDLE_LIBNEEDLE_PARITY
+typedef struct {
+    const uint8_t *key;
+    int8_t *data;
+    float *scales;
+} PhiCache;
+static PhiCache phi_cache[MAX_LAYERS * 3];
+static unsigned phi_cache_count;
+
+static void phi_cache_clear(void) {
+    for (unsigned i = 0; i < phi_cache_count; i++) {
+        free(phi_cache[i].data);
+        free(phi_cache[i].scales);
+    }
+    memset(phi_cache, 0, sizeof phi_cache);
+    phi_cache_count = 0;
+}
+
+/* MHC phi weights are decoded into input space and quantized per full row.
+ * They do not use the groupwise Hadamard activation path of CQ projections. */
+static void phi_native(const Needle *m, const CQMat *w, const float *x, float *y) {
+    PhiCache *cache = phi_cache;
+    unsigned c = 0;
+    for (; c < phi_cache_count; c++)
+        if (cache[c].key == w->packed)
+            break;
+    if (c == phi_cache_count) {
+        if (c >= MAX_LAYERS * 3)
+            abort();
+        cache[c].key = w->packed;
+        cache[c].data = malloc((size_t)w->in * w->out);
+        cache[c].scales = malloc(w->out * 4);
+        if (!cache[c].data || !cache[c].scales)
+            abort();
+        float row[MAX_LANES * 512];
+        for (uint32_t r = 0; r < w->out; r++) {
+            cq_row(m, w, r, row);
+            float max = 0;
+            for (uint32_t k = 0; k < w->in; k++)
+                max = fmaxf(max, fabsf(row[k]));
+            float scale = max > 0 ? max / 127.f : 1.f;
+            cache[c].scales[r] = scale;
+            for (uint32_t k = 0; k < w->in; k++)
+                cache[c].data[r * w->in + k] = quant_round(row[k] * (1.f / scale));
+        }
+        phi_cache_count++;
+    }
+    float max = 0;
+    for (uint32_t k = 0; k < w->in; k++)
+        max = fmaxf(max, fabsf(x[k]));
+    float scale = max > 0 ? max / 127.f : 1.f, inv = 1.f / scale;
+    int16_t q[MAX_LANES * 512];
+    for (uint32_t k = 0; k < w->in; k++)
+        q[k] = quant_round(x[k] * inv);
+    for (uint32_t r = 0; r < w->out; r++) {
+        int sum = 0;
+        for (uint32_t k = 0; k < w->in; k++) sum += q[k] * cache[c].data[r*w->in+k];
+        y[r] = (float)sum * scale * cache[c].scales[r];
+    }
+}
+
+
+#else
+static void phi_cache_clear(void) {}
+
+#endif
 /* ------------------------------------------------------------- math bits */
 
 static inline float sigmoidf_(float x) { return 1.0f / (1.0f + expf(-x)); }
+#ifdef NEEDLE_LIBNEEDLE_PARITY
+static inline float siluf_(float x) { return x / (1.0f + expf(-x)); }
+#else
 static inline float siluf_(float x) { return x * sigmoidf_(x); }
+#endif
 
 static void zcrms(const float *x, const float *scale, float *out, int n) {
     float ss = 0;
@@ -1025,7 +1176,12 @@ static void softmax_(float *x, int n) {
     for (int i = 1; i < n; i++) if (x[i] > mx) mx = x[i];
     float s = 0;
     for (int i = 0; i < n; i++) { x[i] = expf(x[i] - mx); s += x[i]; }
+#ifdef NEEDLE_LIBNEEDLE_PARITY
+    float inv = 1.f/s;
+    for (int i = 0; i < n; i++) x[i] *= inv;
+#else
     for (int i = 0; i < n; i++) x[i] /= s;
+#endif
 }
 
 /* sinkhorn over an n×n matrix of logits (n = lanes, tiny), log-space with
@@ -1069,7 +1225,10 @@ void needle_reset(Needle *m, uint32_t max_len) {
                                  : m->kv_window + NEEDLE_KV_SLACK)
                   : max_len;
     m->kv_alloc = want < max_len ? want : max_len;
-    free(m->k_cache); free(m->v_cache); free(m->k_scale); free(m->v_scale);
+    free(m->k_cache);
+    free(m->v_cache);
+    free(m->k_scale);
+    free(m->v_scale);
     free(m->attn_scores);
     free(m->ering); free(m->ering_valid); free(m->hist);
     m->k_cache = (int8_t *)calloc((size_t)L * KV * m->kv_alloc * hd, 1);
@@ -1151,7 +1310,11 @@ void needle_reset(Needle *m, uint32_t max_len) {
     m->sinv = (float *)malloc((size_t)max_len * half * 4);
     for (uint32_t t = 0; t < max_len; t++)
         for (uint32_t i = 0; i < half; i++) {
+#ifdef NEEDLE_LIBNEEDLE_PARITY
+            float freq = 1.f / powf(m->rope_theta, (float)(2 * i) / hd);
+#else
             float freq = powf(m->rope_theta, -(float)(2 * i) / hd);
+#endif
             m->cosv[t * half + i] = cosf(t * freq);
             m->sinv[t * half + i] = sinf(t * freq);
         }
@@ -1204,7 +1367,15 @@ static void engram_step(Needle *m) {
         uint32_t depth = m->ering_depth;
         uint32_t slot = m->epos % depth;
         float *ring = m->ering + ((size_t)s * depth + slot) * C;
+#ifdef NEEDLE_LIBNEEDLE_PARITY
+        for(uint32_t g=0;g<C;g+=32) {
+            float mx=0;for(uint32_t c=0;c<32;c++)mx=fmaxf(mx,fabsf(v_now[g+c]));
+            float scale=mx>0?mx/127.f:1.f,inv=1.f/scale;
+            for(uint32_t c=0;c<32;c++)ring[g+c]=(float)quant_round(v_now[g+c]*inv)*scale;
+        }
+#else
         memcpy(ring, v_now, C * 4);
+#endif
         m->ering_valid[s * depth + slot] = 1;
 
         static float mixed[512];
@@ -1298,6 +1469,11 @@ void needle_prof_dump(void) {}
 
 /* --------------------------------------------------------------- forward */
 
+#ifdef NEEDLE_LIBNEEDLE_PARITY
+/* libneedle reserves KV slots for an entire 32-token prefill block before
+ * attention. Match which old slots remain visible without buffering a block. */
+static uint32_t prefill_window_lo;
+#endif
 static int g_trace = -1;
 static void tr(const char *tag, int layer, const float *x, int n) {
     if (g_trace < 0) g_trace = getenv("NEEDLE_TRACE") != NULL;
@@ -1321,6 +1497,7 @@ static inline uint32_t kv_slot(const Needle *m, uint32_t pos) {
     return m->sink_len + (pos - m->sink_len) % m->kv_window;
 }
 
+
 static void attn_job_fn(void *p) {
     AttnJob *j = (AttnJob *)p;
     const Needle *m = j->m;
@@ -1334,19 +1511,38 @@ static void attn_job_fn(void *p) {
         size_t sbase = ((size_t)i * KV + kk) * ka;
         for (uint32_t r = 0; r < reps; r++) {
             const float *qh = m->q + (kk * reps + r) * hd;
+#ifdef NEEDLE_LIBNEEDLE_PARITY
+            int16_t qi[512];
+            float qmax = 0;
+            for (uint32_t d=0;d<hd;d++) qmax=fmaxf(qmax,fabsf(qh[d]));
+            float qscale=qmax>0 ? qmax/127.f : 1.f;
+            float qinv=1.f/qscale;
+            for (uint32_t d=0;d<hd;d++) qi[d]=(int16_t)quant_round(qh[d]*qinv);
+
+#endif
             uint32_t recent_n = pos >= j->recent_lo ? pos + 1 - j->recent_lo : 0;
             uint32_t T = j->prefix_n + recent_n;
             for (uint32_t tt = 0; tt < T; tt++) {
                 uint32_t logical = tt < j->prefix_n ? tt
                                                     : j->recent_lo + tt - j->prefix_n;
                 uint32_t sl = kv_slot(m, logical);
+
                 const int8_t *kp = m->k_cache + kbase + (size_t)sl * hd;
-                float s0 = 0, s1 = 0, s2 = 0, s3 = 0;
-                for (uint32_t d = 0; d < hd; d += 4) {
-                    s0 += qh[d] * kp[d];         s1 += qh[d + 1] * kp[d + 1];
-                    s2 += qh[d + 2] * kp[d + 2]; s3 += qh[d + 3] * kp[d + 3];
+
+                {
+#ifdef NEEDLE_LIBNEEDLE_PARITY
+                    int dot=0;
+                    for (uint32_t d=0;d<hd;d++) dot+=qi[d]*kp[d];
+                    aw[tt] = ((float)dot * m->k_scale[sbase+sl]) * (qscale * inv_sq);
+#else
+                    float s0 = 0, s1 = 0, s2 = 0, s3 = 0;
+                    for (uint32_t d = 0; d < hd; d += 4) {
+                        s0 += qh[d] * kp[d]; s1 += qh[d+1] * kp[d+1];
+                        s2 += qh[d+2] * kp[d+2]; s3 += qh[d+3] * kp[d+3];
+                    }
+                    aw[tt] = ((s0+s1)+(s2+s3)) * m->k_scale[sbase+sl] * inv_sq;
+#endif
                 }
-                aw[tt] = ((s0 + s1) + (s2 + s3)) * m->k_scale[sbase + sl] * inv_sq;
             }
             softmax_(aw, (int)T);
             float *outp = m->att_out + (kk * reps + r) * hd;
@@ -1355,7 +1551,9 @@ static void attn_job_fn(void *p) {
                 uint32_t logical = tt < j->prefix_n ? tt
                                                     : j->recent_lo + tt - j->prefix_n;
                 uint32_t sl = kv_slot(m, logical);
+
                 const int8_t *vp = m->v_cache + kbase + (size_t)sl * hd;
+
                 float w = aw[tt] * m->v_scale[sbase + sl];
                 for (uint32_t d = 0; d < hd; d++) outp[d] += w * vp[d];
             }
@@ -1520,7 +1718,11 @@ const float *needle_step_ex(Needle *m, int token, uint32_t pos, int want_logits)
             }
             m->k_scale[sbase] = mx / 127.0f;
             for (uint32_t d = 0; d < hd; d++)
+#ifdef NEEDLE_LIBNEEDLE_PARITY
+                m->k_cache[base + d] = (int8_t)quant_round(m->k[kk * hd + d] * (1.f / m->k_scale[sbase]));
+#else
                 m->k_cache[base + d] = (int8_t)lrintf(m->k[kk * hd + d] / m->k_scale[sbase]);
+#endif
             mx = 1e-12f;
             for (uint32_t d = 0; d < hd; d++) {
                 float a = fabsf(m->v[kk * hd + d]);
@@ -1528,7 +1730,11 @@ const float *needle_step_ex(Needle *m, int token, uint32_t pos, int want_logits)
             }
             m->v_scale[sbase] = mx / 127.0f;
             for (uint32_t d = 0; d < hd; d++)
+#ifdef NEEDLE_LIBNEEDLE_PARITY
+                m->v_cache[base + d] = (int8_t)quant_round(m->v[kk * hd + d] * (1.f / m->v_scale[sbase]));
+#else
                 m->v_cache[base + d] = (int8_t)lrintf(m->v[kk * hd + d] / m->v_scale[sbase]);
+#endif
         }
         PROF_SPLIT(PROF_QKV_POST);
 
@@ -1538,6 +1744,9 @@ const float *needle_step_ex(Needle *m, int token, uint32_t pos, int want_logits)
             uint32_t window_lo = pos + 1 - m->kv_window;
             if (window_lo > recent_lo) recent_lo = window_lo;
         }
+#ifdef NEEDLE_LIBNEEDLE_PARITY
+        if (prefill_window_lo > recent_lo) recent_lo = prefill_window_lo;
+#endif
         uint32_t reps = H / KV;
         /* nx and h are dead until the next layer. Reuse them for the common
          * <= d_model case instead of spending scarce ESP32 internal SRAM on
@@ -1602,9 +1811,15 @@ const float *needle_step_ex(Needle *m, int token, uint32_t pos, int want_logits)
         static float xn[MAX_LANES * 512];
         for (uint32_t l = 0; l < n; l++) {
             for (uint32_t c = 0; c < C; c++) {
+#ifdef NEEDLE_LIBNEEDLE_PARITY
+                float s = hpost[l] * y[c];
+                for (uint32_t j = 0; j < n; j++) s += tmpl[l * n + j] * m->x[j * C + c];
+                xn[l * C + c] = s;
+#else
                 float s = 0;
                 for (uint32_t j = 0; j < n; j++) s += tmpl[l * n + j] * m->x[j * C + c];
                 xn[l * C + c] = s + hpost[l] * y[c];
+#endif
             }
         }
         tr("hres", (int)i, tmpl, (int)(n*n));
@@ -1863,10 +2078,25 @@ static int encode_raw(const Needle *m, const char *text, int *out, int max_out) 
     return needle_encode(&tmp, text, out, max_out);
 }
 
-typedef struct { const float *logits; uint32_t pos; } DecCtx;
+/* Apply libneedle's repetition penalty to generated tokens, including JSON. */
+typedef struct {
+    const float *logits;
+    uint32_t pos;
+#ifdef NEEDLE_LIBNEEDLE_PARITY
+    unsigned char seen[1024];
+#endif
+} DecCtx;
 
 static void dc_feed(Needle *m, DecCtx *dc, int tok) {
+#ifdef NEEDLE_LIBNEEDLE_PARITY
+    dc->seen[(unsigned)tok >> 3] |= (unsigned char)(1u << (tok & 7));
+#endif
     dc->logits = needle_step(m, tok, dc->pos++);
+#ifdef NEEDLE_LIBNEEDLE_PARITY
+    for (uint32_t t = 0; t < m->n_pieces; t++)
+        if (dc->seen[t >> 3] & (1u << (t & 7)))
+            m->logits[t] = m->logits[t] > 0 ? m->logits[t] / 1.3f : m->logits[t] * 1.3f;
+#endif
 }
 
 static float log_softmax_at(const float *logits, uint32_t n, int idx) {
@@ -2117,10 +2347,8 @@ static int bg_consume_byte(ByteGrammar *g, unsigned char byte) {
             g->state = BG_CALL_OPEN;
             break;
         case BG_CALL_OPEN:
-            if (byte == ']' && g->calls == 0) {
-                g->state = BG_DONE;
-                break;
-            }
+            /* A model-selected empty list must remain a valid result. */
+            if (byte == ']' && g->calls == 0) { g->state = BG_DONE; break; }
             if (byte != '{') return 0;
             g->state = BG_NAME_LITERAL;
             g->literal_off = 0;
@@ -2226,6 +2454,7 @@ static int bg_consume_byte(ByteGrammar *g, unsigned char byte) {
         case BG_AFTER_CALL:
             if (byte == ']') {
                 g->state = BG_DONE;
+            /* Multiple calls may use the same tool, for example two todos. */
             } else if (byte == ',' && g->calls < g->max_calls) {
                 g->state = BG_CALL_OPEN;
             } else return 0;
@@ -2443,7 +2672,11 @@ static int prune_tools(Needle *m, const char *query, const char *tools_json,
     const char *starts[NT_MAX_TOOLS];
     int lens[NT_MAX_TOOLS];
     int n = split_json_array(tools_json, starts, lens, NT_MAX_TOOLS);
+#ifdef NEEDLE_LIBNEEDLE_PARITY
+    if (n <= 5) return 0;
+#else
     if (n <= NEEDLE_RAG_MIN_K) return 0;
+#endif
 
     static char docs[NT_MAX_TOOLS][512];
     for (int i = 0; i < n; i++) tool_doc(starts[i], lens[i], docs[i], sizeof docs[i]);
@@ -2521,7 +2754,7 @@ int needle_toolcall_sys(Needle *m, const char *system, const char *query,
 
     static NTool tools[NT_MAX_TOOLS];
     int n_tools = needle_parse_tools(tools_json, tools, NT_MAX_TOOLS);
-    if (n_tools <= 0) return -1;
+    if (n_tools <= 0) { if (outsz < 3) return -1; memcpy(out, "[]", 3); return 2; }
 
     /* Split at the </tools> marker: markers are atomic tokens, so the prefix
      * tokenization is always a true prefix of the whole prompt's. */
@@ -2561,7 +2794,7 @@ int needle_toolcall_sys(Needle *m, const char *system, const char *query,
     size_t ering_bytes = (size_t)m->n_sites * m->ering_depth * m->d_model * 4;
     size_t evalid_bytes = (size_t)m->n_sites * m->ering_depth;
 
-    DecCtx dc = { NULL, 0 };
+    DecCtx dc = {0};
     int64_t t_pre = needle_now_us();
     PROF_SET_MODE(0);
     int reused = (m->px_valid && m->px_hash == th && m->px_n == (uint32_t)n_pids
@@ -2591,7 +2824,11 @@ int needle_toolcall_sys(Needle *m, const char *system, const char *query,
                     m, system_prefix, system_ids + 1, 1023);
             } else m->sink_len = 0;
         } else if (!sink_mode || strcmp(sink_mode, "1") != 0) {
+#ifdef NEEDLE_LIBNEEDLE_PARITY
+            int cap = sink_mode ? atoi(sink_mode) : n_pids;
+#else
             int cap = sink_mode ? atoi(sink_mode) : NEEDLE_PREFIX_SINK_DEFAULT;
+#endif
             if (cap <= 0) m->sink_len = 0;
             else if (m->sink_len > (uint32_t)cap) m->sink_len = (uint32_t)cap;
         }
@@ -2609,7 +2846,14 @@ int needle_toolcall_sys(Needle *m, const char *system, const char *query,
 #endif
         ering_bytes = (size_t)m->n_sites * m->ering_depth * m->d_model * 4;
         evalid_bytes = (size_t)m->n_sites * m->ering_depth;
-        for (int p = 0; p < n_pids; p++) needle_step_ex(m, pids[p], (uint32_t)p, 0);
+        for (int p = 0; p < n_pids; p++) {
+#ifdef NEEDLE_LIBNEEDLE_PARITY
+            uint32_t end = (uint32_t)((p / 32 + 1) * 32);
+            if (end > (uint32_t)n_pids) end = (uint32_t)n_pids;
+            prefill_window_lo = end > m->kv_window ? end - m->kv_window : 0;
+#endif
+            needle_step_ex(m, pids[p], (uint32_t)p, 0);
+        }
         m->px_hash = th;
         m->px_n = (uint32_t)n_pids;
         m->px_hist_len = m->hist_len;
@@ -2619,8 +2863,18 @@ int needle_toolcall_sys(Needle *m, const char *system, const char *query,
         m->px_valid = 1;
     }
     dc.pos = (uint32_t)n_pids;
-    for (int k = 0; k < n_rids; k++)
+    for (int k = 0; k < n_rids; k++) {
+#ifdef NEEDLE_LIBNEEDLE_PARITY
+        uint32_t end = (uint32_t)((k / 32 + 1) * 32);
+        if (end > (uint32_t)n_rids) end = (uint32_t)n_rids;
+        end += (uint32_t)n_pids;
+        prefill_window_lo = end > m->kv_window ? end - m->kv_window : 0;
+#endif
         dc.logits = needle_step_ex(m, rids[k], dc.pos++, k == n_rids - 1);
+    }
+#ifdef NEEDLE_LIBNEEDLE_PARITY
+    prefill_window_lo = 0;
+#endif
     int64_t t_dec = needle_now_us();
     PROF_ADD_WALL(0, t_dec - t_pre);
     PROF_SET_MODE(1);
@@ -3027,6 +3281,7 @@ int main(int argc, char **argv) {
             fflush(stdout);
             n++;
         }
+        needle_prof_dump();
         if (qf != stdin) fclose(qf);
         fprintf(stderr, "batch: %d queries in %.1f s (%.2f s/query)\n",
                 n, (now_ms() - t_start) / 1000.0, (now_ms() - t_start) / 1000.0 / (n ? n : 1));

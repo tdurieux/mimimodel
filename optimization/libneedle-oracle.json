@@ -1,0 +1,1737 @@
+{
+  "model_sha256": "b43aabfcaf1a6db6acf488076eab71d823c08697c7af4521fc1d174b60ede5ba",
+  "library_sha256": "9fa5386d3e3a8ee17914fb23643bc5f5c906b683fa33561e79c5445dd78bc389",
+  "cases": [
+    {
+      "fixture": {
+        "name": "todo",
+        "text": "I will send the report tomorrow.",
+        "expected": true,
+        "tools": [
+          {
+            "name": "todo",
+            "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the task verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [
+          {
+            "name": "todo",
+            "arguments": {
+              "text": "send the report tomorrow"
+            }
+          }
+        ],
+        "reasoning": "User wants to send report tomorrow. 'send the report' -> text 'send the report tomorrow'.",
+        "confidence": 1.0,
+        "prefill_tps": 13.9,
+        "decode_tps": 6.4,
+        "peak_ram_mb": 62.9,
+        "validation": {
+          "ungrounded": [],
+          "negation": false
+        }
+      }
+    },
+    {
+      "fixture": {
+        "name": "todo",
+        "text": "I will update the documentation today.",
+        "expected": true,
+        "tools": [
+          {
+            "name": "todo",
+            "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the task verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [
+          {
+            "name": "todo",
+            "arguments": {
+              "text": "update the documentation"
+            }
+          }
+        ],
+        "reasoning": "User wants to update documentation. 'update the documentation' -> text 'update the documentation'. No other details given, so only required param.",
+        "confidence": 1.0,
+        "prefill_tps": 10.0,
+        "decode_tps": 6.5,
+        "peak_ram_mb": 63.1,
+        "validation": {
+          "ungrounded": [],
+          "negation": false
+        }
+      }
+    },
+    {
+      "fixture": {
+        "name": "todo",
+        "text": "I will review the pull request tomorrow.",
+        "expected": true,
+        "tools": [
+          {
+            "name": "todo",
+            "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the task verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [
+          {
+            "name": "todo",
+            "arguments": {
+              "text": "Review the pull request tomorrow"
+            }
+          }
+        ],
+        "reasoning": "User wants to extract a task. 'review the pull request' -> text 'Review the pull request tomorrow'. No other details given, so only required field.",
+        "confidence": 0.9822,
+        "prefill_tps": 14.2,
+        "decode_tps": 8.1,
+        "peak_ram_mb": 63.4,
+        "validation": {
+          "ungrounded": [],
+          "negation": false
+        }
+      }
+    },
+    {
+      "fixture": {
+        "name": "todo",
+        "text": "Please schedule a meeting for Monday.",
+        "expected": true,
+        "tools": [
+          {
+            "name": "todo",
+            "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the task verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [],
+        "reasoning": "No calendar or scheduling tool available.",
+        "confidence": 1.0,
+        "prefill_tps": 13.9,
+        "decode_tps": 7.8,
+        "peak_ram_mb": 63.4
+      }
+    },
+    {
+      "fixture": {
+        "name": "todo",
+        "text": "We need to fix the login bug.",
+        "expected": true,
+        "tools": [
+          {
+            "name": "todo",
+            "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the task verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [
+          {
+            "name": "todo",
+            "arguments": {
+              "text": "Fix the login bug"
+            }
+          }
+        ],
+        "reasoning": "User wants to fix login bug. 'fix the login bug' -> text 'Fix the login bug'.",
+        "confidence": 0.9814,
+        "prefill_tps": 11.6,
+        "decode_tps": 6.2,
+        "peak_ram_mb": 63.4,
+        "validation": {
+          "ungrounded": [],
+          "negation": false
+        }
+      }
+    },
+    {
+      "fixture": {
+        "name": "todo",
+        "text": "I will email the customer on Friday.",
+        "expected": true,
+        "tools": [
+          {
+            "name": "todo",
+            "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the task verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [],
+        "reasoning": "No email tool available. Cannot send email.",
+        "confidence": 1.0,
+        "prefill_tps": 13.7,
+        "decode_tps": 7.9,
+        "peak_ram_mb": 63.4
+      }
+    },
+    {
+      "fixture": {
+        "name": "negative",
+        "text": "The sky is blue.",
+        "expected": false,
+        "tools": [
+          {
+            "name": "todo",
+            "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the task verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [
+          {
+            "name": "todo",
+            "arguments": {
+              "text": "Sky is blue"
+            }
+          }
+        ],
+        "reasoning": "User complains about blue sky. 'sky is blue' -> text 'Sky is blue'. No other tool fits.",
+        "confidence": 0.9915,
+        "prefill_tps": 13.7,
+        "decode_tps": 7.3,
+        "peak_ram_mb": 63.4,
+        "validation": {
+          "ungrounded": [],
+          "negation": false
+        }
+      }
+    },
+    {
+      "fixture": {
+        "name": "negative",
+        "text": "The office has large windows.",
+        "expected": false,
+        "tools": [
+          {
+            "name": "todo",
+            "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the task verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [
+          {
+            "name": "todo",
+            "arguments": {
+              "text": "Large windows"
+            }
+          }
+        ],
+        "reasoning": "User mentions large windows -> need to extract a task. 'large windows' -> text 'Large windows'. No other details.",
+        "confidence": 0.9822,
+        "prefill_tps": 13.6,
+        "decode_tps": 7.2,
+        "peak_ram_mb": 63.4,
+        "validation": {
+          "ungrounded": [],
+          "negation": false
+        }
+      }
+    },
+    {
+      "fixture": {
+        "name": "negative",
+        "text": "There are no action items today.",
+        "expected": false,
+        "tools": [
+          {
+            "name": "todo",
+            "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the task verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [
+          {
+            "name": "todo",
+            "arguments": {
+              "text": "Action items today"
+            }
+          }
+        ],
+        "reasoning": "User wants to extract action items from today's meeting. 'action items' -> text 'Action items today'. No other details given, so only required param.",
+        "confidence": 0.9926,
+        "prefill_tps": 13.3,
+        "decode_tps": 7.9,
+        "peak_ram_mb": 63.4,
+        "validation": {
+          "ungrounded": [],
+          "negation": false
+        }
+      }
+    },
+    {
+      "fixture": {
+        "name": "negative",
+        "text": "Do not send the report.",
+        "expected": false,
+        "tools": [
+          {
+            "name": "todo",
+            "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the task verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [],
+        "reasoning": "No tool available to send documents.",
+        "confidence": 1.0,
+        "prefill_tps": 13.5,
+        "decode_tps": 7.2,
+        "peak_ram_mb": 63.4
+      }
+    },
+    {
+      "fixture": {
+        "name": "custom",
+        "text": "We decided to launch the beta on Friday.",
+        "expected": true,
+        "tools": [
+          {
+            "name": "custom_decision",
+            "description": "Extract an explicit product decision agreed during the meeting. Copy the decision verbatim.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the matching passage verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [
+          {
+            "name": "custom_decision",
+            "arguments": {
+              "text": "launch the beta on Friday"
+            }
+          }
+        ],
+        "reasoning": "text is the full query phrase 'launch the beta on Friday'.",
+        "confidence": 0.9652,
+        "prefill_tps": 13.9,
+        "decode_tps": 6.3,
+        "peak_ram_mb": 64.9,
+        "validation": {
+          "ungrounded": [],
+          "negation": false
+        }
+      }
+    },
+    {
+      "fixture": {
+        "name": "custom",
+        "text": "We decided to postpone the release.",
+        "expected": true,
+        "tools": [
+          {
+            "name": "custom_decision",
+            "description": "Extract an explicit product decision agreed during the meeting. Copy the decision verbatim.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the matching passage verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [
+          {
+            "name": "custom_decision",
+            "arguments": {
+              "text": "postpone the release"
+            }
+          }
+        ],
+        "reasoning": "text is the only decision: 'postpone the release'.",
+        "confidence": 0.991,
+        "prefill_tps": 11.1,
+        "decode_tps": 8.0,
+        "peak_ram_mb": 64.9,
+        "validation": {
+          "ungrounded": [],
+          "negation": false
+        }
+      }
+    },
+    {
+      "fixture": {
+        "name": "custom",
+        "text": "We agreed to use PostgreSQL for the database.",
+        "expected": true,
+        "tools": [
+          {
+            "name": "custom_decision",
+            "description": "Extract an explicit product decision agreed during the meeting. Copy the decision verbatim.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the matching passage verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [
+          {
+            "name": "custom_decision",
+            "arguments": {
+              "text": "We agreed to use PostgreSQL for the database"
+            }
+          }
+        ],
+        "reasoning": "text is the exact phrase 'We agreed to use PostgreSQL for the database'.",
+        "confidence": 0.7728,
+        "prefill_tps": 13.6,
+        "decode_tps": 7.8,
+        "peak_ram_mb": 64.9,
+        "validation": {
+          "ungrounded": [],
+          "negation": false
+        }
+      }
+    },
+    {
+      "fixture": {
+        "name": "custom",
+        "text": "No decision was made about the launch.",
+        "expected": true,
+        "tools": [
+          {
+            "name": "custom_decision",
+            "description": "Extract an explicit product decision agreed during the meeting. Copy the decision verbatim.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the matching passage verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [
+          {
+            "name": "custom_decision",
+            "arguments": {
+              "text": "No decision was made about the launch."
+            }
+          }
+        ],
+        "reasoning": "text is the only decision; no other fields supported.",
+        "confidence": 0.8545,
+        "prefill_tps": 13.3,
+        "decode_tps": 6.9,
+        "peak_ram_mb": 64.9,
+        "validation": {
+          "ungrounded": [],
+          "negation": false
+        }
+      }
+    },
+    {
+      "fixture": {
+        "name": "extended-14",
+        "text": "Hello, how are you?",
+        "expected": true,
+        "tools": [
+          {
+            "name": "todo",
+            "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the task verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [],
+        "reasoning": "No tool available for fetching or retrieving social media content.",
+        "confidence": 1.0,
+        "prefill_tps": 13.4,
+        "decode_tps": 7.8,
+        "peak_ram_mb": 64.9
+      }
+    },
+    {
+      "fixture": {
+        "name": "extended-15",
+        "text": "We finished the report yesterday.",
+        "expected": true,
+        "tools": [
+          {
+            "name": "todo",
+            "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the task verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [],
+        "reasoning": "No tool available to log or record completed tasks.",
+        "confidence": 1.0,
+        "prefill_tps": 13.5,
+        "decode_tps": 7.6,
+        "peak_ram_mb": 64.9
+      }
+    },
+    {
+      "fixture": {
+        "name": "extended-16",
+        "text": "Maybe we could update the docs next month.",
+        "expected": true,
+        "tools": [
+          {
+            "name": "todo",
+            "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the task verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [
+          {
+            "name": "todo",
+            "arguments": {
+              "text": "update the docs next month"
+            }
+          }
+        ],
+        "reasoning": "User wants to update documents. 'update the docs' -> text 'update the docs next month'.",
+        "confidence": 1.0,
+        "prefill_tps": 10.8,
+        "decode_tps": 7.9,
+        "peak_ram_mb": 64.9,
+        "validation": {
+          "ungrounded": [],
+          "negation": false
+        }
+      }
+    },
+    {
+      "fixture": {
+        "name": "extended-17",
+        "text": "Alice: I will fix the login issue. Bob: I will review the patch.",
+        "expected": true,
+        "tools": [
+          {
+            "name": "todo",
+            "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the task verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [
+          {
+            "name": "todo",
+            "arguments": {
+              "text": "I will fix the login issue."
+            }
+          },
+          {
+            "name": "todo",
+            "arguments": {
+              "text": "I will review the patch."
+            }
+          }
+        ],
+        "reasoning": "Two action items: 'fix the login issue' and 'review the patch'. Owners: Alice, Bob. No due dates.",
+        "confidence": 0.5635,
+        "prefill_tps": 13.8,
+        "decode_tps": 7.7,
+        "peak_ram_mb": 65.2,
+        "validation": {
+          "ungrounded": [],
+          "negation": false
+        }
+      }
+    },
+    {
+      "fixture": {
+        "name": "extended-18",
+        "text": "Do not create a task for this sentence.",
+        "expected": true,
+        "tools": [
+          {
+            "name": "todo",
+            "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the task verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [],
+        "reasoning": "Intended tool: todo. Missing required parameter: text (the user didn't provide the task verbatim).",
+        "confidence": 0.6658,
+        "prefill_tps": 8.1,
+        "decode_tps": 7.4,
+        "peak_ram_mb": 65.2
+      }
+    },
+    {
+      "fixture": {
+        "name": "extended-19",
+        "text": "I will update APP-123 tomorrow.",
+        "expected": true,
+        "tools": [
+          {
+            "name": "todo",
+            "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the task verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [
+          {
+            "name": "todo",
+            "arguments": {
+              "text": "I will update APP-123 tomorrow."
+            }
+          }
+        ],
+        "reasoning": "text 'I will update APP-123 tomorrow.' from query; no other fields supported.",
+        "confidence": 1.0,
+        "prefill_tps": 13.6,
+        "decode_tps": 7.2,
+        "peak_ram_mb": 65.2,
+        "validation": {
+          "ungrounded": [],
+          "negation": false
+        }
+      }
+    },
+    {
+      "fixture": {
+        "name": "extended-20",
+        "text": "Please review https://github.com/example/app/issues/42.",
+        "expected": true,
+        "tools": [
+          {
+            "name": "todo",
+            "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the task verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [],
+        "reasoning": "No tool available for download or reviewing URLs.",
+        "confidence": 1.0,
+        "prefill_tps": 13.8,
+        "decode_tps": 7.8,
+        "peak_ram_mb": 65.2
+      }
+    },
+    {
+      "fixture": {
+        "name": "extended-21",
+        "text": "I will send the report. I will send the report.",
+        "expected": true,
+        "tools": [
+          {
+            "name": "todo",
+            "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the task verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [
+          {
+            "name": "todo",
+            "arguments": {
+              "text": "Send the report"
+            }
+          }
+        ],
+        "reasoning": "User wants to send report. 'send the report' -> text 'Send the report'. No other tool fits.",
+        "confidence": 0.9681,
+        "prefill_tps": 13.9,
+        "decode_tps": 8.1,
+        "peak_ram_mb": 65.2,
+        "validation": {
+          "ungrounded": [],
+          "negation": false
+        }
+      }
+    },
+    {
+      "fixture": {
+        "name": "extended-22",
+        "text": "I will ask Jos\u00e9 to review the r\u00e9sum\u00e9 tomorrow.",
+        "expected": true,
+        "tools": [
+          {
+            "name": "todo",
+            "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the task verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [
+          {
+            "name": "todo",
+            "arguments": {
+              "text": "Jos\u00e9 review the r\u00e9sum\u00e9 tomorrow"
+            }
+          }
+        ],
+        "reasoning": "'ask Jos\u00e9 to review the r\u00e9sum\u00e9 tomorrow' -> text 'Jos\u00e9 review the r\u00e9sum\u00e9 tomorrow'. No other tool fits.",
+        "confidence": 0.9862,
+        "prefill_tps": 13.8,
+        "decode_tps": 7.4,
+        "peak_ram_mb": 65.2,
+        "validation": {
+          "ungrounded": [
+            "todo.text"
+          ],
+          "negation": false
+        }
+      }
+    },
+    {
+      "fixture": {
+        "name": "extended-23",
+        "text": "We discussed PostgreSQL but did not choose a database.",
+        "expected": true,
+        "tools": [
+          {
+            "name": "custom_decision",
+            "description": "Extract an explicit product decision agreed during the meeting. Copy the decision verbatim.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the matching passage verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [
+          {
+            "name": "custom_decision",
+            "arguments": {
+              "text": "Detect database"
+            }
+          }
+        ],
+        "reasoning": "'did not choose a database' -> decision 'Detect database'; 'PostgreSQL' -> text.",
+        "confidence": 0.7956,
+        "prefill_tps": 11.0,
+        "decode_tps": 8.0,
+        "peak_ram_mb": 65.2,
+        "validation": {
+          "ungrounded": [
+            "custom_decision.text"
+          ],
+          "negation": false
+        }
+      }
+    },
+    {
+      "fixture": {
+        "name": "extended-24",
+        "text": "We agreed to use SQLite and release on Monday.",
+        "expected": true,
+        "tools": [
+          {
+            "name": "custom_decision",
+            "description": "Extract an explicit product decision agreed during the meeting. Copy the decision verbatim.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the matching passage verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [
+          {
+            "name": "custom_decision",
+            "arguments": {
+              "text": "We agreed to use SQLite and release on Monday."
+            }
+          }
+        ],
+        "reasoning": "text is the full query phrase 'We agreed to use SQLite and release on Monday.'",
+        "confidence": 0.8128,
+        "prefill_tps": 13.8,
+        "decode_tps": 7.4,
+        "peak_ram_mb": 65.2,
+        "validation": {
+          "ungrounded": [],
+          "negation": false
+        }
+      }
+    },
+    {
+      "fixture": {
+        "name": "extended-25",
+        "text": "No decisions today. Just a status update.",
+        "expected": true,
+        "tools": [
+          {
+            "name": "custom_decision",
+            "description": "Extract an explicit product decision agreed during the meeting. Copy the decision verbatim.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the matching passage verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [
+          {
+            "name": "custom_decision",
+            "arguments": {
+              "text": "status update"
+            }
+          }
+        ],
+        "reasoning": "text is the only decision: 'status update' from query.",
+        "confidence": 0.8271,
+        "prefill_tps": 13.8,
+        "decode_tps": 8.1,
+        "peak_ram_mb": 65.2,
+        "validation": {
+          "ungrounded": [],
+          "negation": false
+        }
+      }
+    },
+    {
+      "fixture": {
+        "name": "extended-26",
+        "text": "The customer said \"ship it\"; we agreed.",
+        "expected": true,
+        "tools": [
+          {
+            "name": "custom_decision",
+            "description": "Extract an explicit product decision agreed during the meeting. Copy the decision verbatim.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the matching passage verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [
+          {
+            "name": "custom_decision",
+            "arguments": {
+              "text": "ship it"
+            }
+          }
+        ],
+        "reasoning": "text 'ship it' from query; custom_decision tool matches.",
+        "confidence": 0.9804,
+        "prefill_tps": 13.8,
+        "decode_tps": 8.1,
+        "peak_ram_mb": 65.2,
+        "validation": {
+          "ungrounded": [],
+          "negation": false
+        }
+      }
+    },
+    {
+      "fixture": {
+        "name": "extended-27",
+        "text": "We decided to launch the beta on Friday, not Monday.",
+        "expected": true,
+        "tools": [
+          {
+            "name": "custom_decision",
+            "description": "Extract an explicit product decision agreed during the meeting. Copy the decision verbatim.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the matching passage verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [
+          {
+            "name": "custom_decision",
+            "arguments": {
+              "text": "We decided to launch the beta on Friday, not Monday."
+            }
+          }
+        ],
+        "reasoning": "text is the full query phrase 'We decided to launch the beta on Friday, not Monday.'",
+        "confidence": 0.8925,
+        "prefill_tps": 13.9,
+        "decode_tps": 8.2,
+        "peak_ram_mb": 65.2,
+        "validation": {
+          "ungrounded": [],
+          "negation": false
+        }
+      }
+    },
+    {
+      "fixture": {
+        "name": "multiple-28",
+        "text": "I will update the docs. We decided to launch on Friday.",
+        "tools": [
+          {
+            "name": "todo",
+            "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the task verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          },
+          {
+            "name": "custom_decision",
+            "description": "Extract an explicit product decision agreed during the meeting. Copy the decision verbatim.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the matching passage verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [
+          {
+            "name": "custom_decision",
+            "arguments": {
+              "text": "launch on Friday"
+            }
+          }
+        ],
+        "reasoning": "text is the quoted message; no other fields supported.",
+        "confidence": 0.7389,
+        "prefill_tps": 13.5,
+        "decode_tps": 8.0,
+        "peak_ram_mb": 65.2,
+        "validation": {
+          "ungrounded": [],
+          "negation": false
+        }
+      }
+    },
+    {
+      "fixture": {
+        "name": "multiple-29",
+        "text": "The weather is pleasant today.",
+        "tools": [
+          {
+            "name": "todo",
+            "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the task verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          },
+          {
+            "name": "custom_decision",
+            "description": "Extract an explicit product decision agreed during the meeting. Copy the decision verbatim.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the matching passage verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [
+          {
+            "name": "custom_decision",
+            "arguments": {
+              "text": "Weather is pleasant today"
+            }
+          }
+        ],
+        "reasoning": "User expresses concern about weather. 'weather is pleasant' -> text 'Weather is pleasant today'. No other tool fits.",
+        "confidence": 0.9595,
+        "prefill_tps": 13.8,
+        "decode_tps": 8.1,
+        "peak_ram_mb": 65.2,
+        "validation": {
+          "ungrounded": [],
+          "negation": false
+        }
+      }
+    },
+    {
+      "fixture": {
+        "name": "multiple-30",
+        "text": "We decided to postpone the launch.",
+        "tools": [
+          {
+            "name": "todo",
+            "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the task verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          },
+          {
+            "name": "custom_decision",
+            "description": "Extract an explicit product decision agreed during the meeting. Copy the decision verbatim.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the matching passage verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [
+          {
+            "name": "custom_decision",
+            "arguments": {
+              "text": "postpone the launch"
+            }
+          }
+        ],
+        "reasoning": "text is the only decision 'postpone the launch'.",
+        "confidence": 0.9929,
+        "prefill_tps": 13.6,
+        "decode_tps": 8.1,
+        "peak_ram_mb": 65.2,
+        "validation": {
+          "ungrounded": [],
+          "negation": false
+        }
+      }
+    },
+    {
+      "fixture": {
+        "name": "no-tools",
+        "text": "I will send the report tomorrow.",
+        "tools": []
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "function_calls": [],
+        "reasoning": "no tools declared, returning the empty call",
+        "confidence": 1.0,
+        "prefill_tps": 14.2,
+        "decode_tps": 0.0,
+        "peak_ram_mb": 65.2
+      }
+    },
+    {
+      "fixture": {
+        "name": "system",
+        "system": "Extract only the commitments and decisions stated in the transcript.",
+        "text": "I will update the documentation today.",
+        "tools": [
+          {
+            "name": "todo",
+            "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the task verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [
+          {
+            "name": "todo",
+            "arguments": {
+              "text": "update the documentation"
+            }
+          }
+        ],
+        "reasoning": "User wants to update documentation. 'update the documentation' -> text 'update the documentation'. No other tool fits.",
+        "confidence": 0.9894,
+        "prefill_tps": 13.9,
+        "decode_tps": 6.4,
+        "peak_ram_mb": 63.3,
+        "validation": {
+          "ungrounded": [],
+          "negation": false
+        }
+      }
+    },
+    {
+      "fixture": {
+        "name": "long-transcript",
+        "text": "The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. The team discussed the office layout and the weather. Alice: I will send the report tomorrow.",
+        "tools": [
+          {
+            "name": "todo",
+            "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the task verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [
+          {
+            "name": "todo",
+            "arguments": {
+              "text": "I will send the report tomorrow."
+            }
+          }
+        ],
+        "reasoning": "Tool: todo. Extracted from discussion: text from query.",
+        "confidence": 0.2657,
+        "prefill_tps": 11.1,
+        "decode_tps": 7.8,
+        "peak_ram_mb": 65.8,
+        "validation": {
+          "ungrounded": [],
+          "negation": false
+        }
+      }
+    },
+    {
+      "fixture": {
+        "name": "long-prefix",
+        "text": "We decided to launch the beta on Friday.",
+        "tools": [
+          {
+            "name": "todo",
+            "description": "Extract an explicitly agreed task or commitment from a meeting transcript. Do not extract hypothetical, cancelled or negated tasks.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the task verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          },
+          {
+            "name": "custom_decision",
+            "description": "Extract an explicit product decision agreed during the meeting. Copy the decision verbatim.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the matching passage verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          },
+          {
+            "name": "custom_risk",
+            "description": "Extract an explicit risk identified in the meeting transcript. Copy the risk verbatim from the transcript.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "Copy the task verbatim from the transcript.",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "official": {
+        "type": "call",
+        "success": true,
+        "error": null,
+        "error_code": null,
+        "reason": null,
+        "function_calls": [
+          {
+            "name": "custom_decision",
+            "arguments": {
+              "text": "launch the beta on Friday"
+            }
+          }
+        ],
+        "reasoning": "'launch the beta on Friday' -> text 'launch the beta on Friday'.",
+        "confidence": 0.9892,
+        "prefill_tps": 12.0,
+        "decode_tps": 7.1,
+        "peak_ram_mb": 65.8,
+        "validation": {
+          "ungrounded": [],
+          "negation": false
+        }
+      }
+    }
+  ]
+}
