@@ -2039,7 +2039,6 @@ typedef struct {
     ByteGrammarState state;
     NTool *tools;
     int n_tools, max_calls, calls;
-    uint32_t emitted_tools;
     int tool, param;
     uint32_t used_params;
     int literal_off;
@@ -2060,7 +2059,6 @@ static int bg_required_done(const ByteGrammar *g) {
 static int bg_choice_prefix(const ByteGrammar *g, int tools) {
     if (tools) {
         for (int i = 0; i < g->n_tools; i++) {
-            if (g->emitted_tools & (1u << i)) continue;
             if (strncmp(g->tools[i].name, g->choice, (size_t)g->choice_len) == 0)
                 return 1;
         }
@@ -2079,8 +2077,7 @@ static int bg_finish_choice(ByteGrammar *g, int tools) {
     g->choice[g->choice_len] = 0;
     if (tools) {
         for (int i = 0; i < g->n_tools; i++) {
-            if (!(g->emitted_tools & (1u << i))
-                && strcmp(g->tools[i].name, g->choice) == 0) {
+            if (strcmp(g->tools[i].name, g->choice) == 0) {
                 g->tool = i;
                 g->param = -1;
                 g->used_params = 0;
@@ -2120,6 +2117,10 @@ static int bg_consume_byte(ByteGrammar *g, unsigned char byte) {
             g->state = BG_CALL_OPEN;
             break;
         case BG_CALL_OPEN:
+            if (byte == ']' && g->calls == 0) {
+                g->state = BG_DONE;
+                break;
+            }
             if (byte != '{') return 0;
             g->state = BG_NAME_LITERAL;
             g->literal_off = 0;
@@ -2219,15 +2220,13 @@ static int bg_consume_byte(ByteGrammar *g, unsigned char byte) {
             break;
         case BG_CALL_CLOSE:
             if (byte != '}') return 0;
-            g->emitted_tools |= 1u << g->tool;
             g->calls++;
             g->state = BG_AFTER_CALL;
             break;
         case BG_AFTER_CALL:
             if (byte == ']') {
                 g->state = BG_DONE;
-            } else if (byte == ',' && g->calls < g->max_calls
-                       && g->emitted_tools != (uint32_t)((1u << g->n_tools) - 1u)) {
+            } else if (byte == ',' && g->calls < g->max_calls) {
                 g->state = BG_CALL_OPEN;
             } else return 0;
             break;
