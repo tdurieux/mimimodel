@@ -18,10 +18,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#if defined(__SSE2__) && !defined(NEEDLE_SCALAR)
+#include <immintrin.h>
+#ifdef NEEDLE_SHUFFLE
+#include <tmmintrin.h>
+#endif
+#define NEEDLE_SSE2 1
+#endif
 
 /* Desktop parity kernels and caches must not enter the embedded build. */
 #if !defined(ESP_PLATFORM)
 #define NEEDLE_LIBNEEDLE_PARITY 1
+#endif
+#if defined(ESP_PLATFORM) && defined(NEEDLE_SHUFFLE)
+#error "Desktop optimization flags are not supported on ESP32"
 #endif
 
 /* ------------------------------------------------------------------ config */
@@ -97,7 +107,11 @@ static inline void *aligned_alloc16(size_t sz) {
 #define MAX_TAPS     8
 
 /* Round quantized values in [-127, 127] halfway away from zero. */
-static inline int quant_round(float x) { return (int)lroundf(x); }
+static inline int quant_round(float x) {
+    int i = (int)x;
+    float remainder = x - (float)i;
+    return i + (remainder >= 0.5f) - (remainder <= -0.5f);
+}
 
 /* ------------------------------------------------------------ fp16 helpers */
 
@@ -458,6 +472,132 @@ static inline int prep_slot(const Needle *m, const float *xh) {
     return xh == m->xh2 ? 1 : 0;
 }
 
+#ifdef NEEDLE_SHUFFLE
+static int8_t *shuffle_lut[2];
+static size_t shuffle_capacity[2];
+static uint32_t shuffle_valid[2], shuffle_bits[2], shuffle_group[2];
+typedef struct {
+    const uint8_t *key;
+    uint32_t rows, cols;
+    uint8_t *data;
+    float *norms;
+} ShuffleMatrix;
+static ShuffleMatrix shuffle_matrices[512];
+static unsigned shuffle_count;
+static size_t shuffle_cache_bytes;
+#ifndef NEEDLE_SHUFFLE_CACHE_BYTES
+#define NEEDLE_SHUFFLE_CACHE_BYTES (2u * 1024u * 1024u)
+#endif
+static void prepare_shuffle(const Needle *m, const CQMat *W, const float *x) {
+    int slot = prep_slot(m, x);
+    shuffle_valid[slot] = 0;
+    if ((W->bits != 2 && W->bits != 4) || W->out < 128 || W->group > 256)
+        return;
+    unsigned chunk = W->bits == 2 ? 2 : 1;
+    size_t count = (size_t)W->in_pad / chunk * 32;
+    if (shuffle_capacity[slot] < count) {
+        free(shuffle_lut[slot]);
+        shuffle_lut[slot] = malloc(count);
+        if (!shuffle_lut[slot])
+            abort();
+        shuffle_capacity[slot] = count;
+    }
+    const int16_t *q = m->xq[slot];
+    for (uint32_t k = 0; k < W->in_pad; k += chunk) {
+        uint8_t *dst = (uint8_t *)shuffle_lut[slot] + (size_t)k / chunk * 32;
+        for (unsigned i = 0; i < 16; i++) {
+            int value = chunk == 2 ? m->lut2_i16[i][0] * q[k] + m->lut2_i16[i][1] * q[k + 1]
+                                   : m->lut4_i16[i][0] * q[k];
+            dst[i] = (uint8_t)value;
+            dst[16 + i] = (uint8_t)((uint16_t)value >> 8);
+        }
+    }
+    shuffle_valid[slot] = W->in_pad;
+    shuffle_bits[slot] = W->bits;
+    shuffle_group[slot] = W->group;
+}
+static ShuffleMatrix *shuffle_matrix(const CQMat *W) {
+    for (unsigned i = 0; i < shuffle_count; ++i)
+        if (shuffle_matrices[i].key == W->packed && shuffle_matrices[i].rows == W->out &&
+            shuffle_matrices[i].cols == W->in_pad)
+            return &shuffle_matrices[i];
+    if (shuffle_count == 512)
+        abort();
+    unsigned chunk = W->bits == 2 ? 2 : 1;
+    size_t blocks = (W->out + 15) / 16;
+    size_t bytes = blocks * 16 * W->in_pad / chunk;
+    size_t norm_bytes = blocks * 16 * (W->in_pad / W->group) * sizeof(float);
+    if (bytes + norm_bytes > NEEDLE_SHUFFLE_CACHE_BYTES - shuffle_cache_bytes) return NULL;
+    uint8_t *p = malloc(bytes);
+    if (!p)
+        abort();
+    for (size_t block = 0; block < blocks; ++block)
+        for (uint32_t k = 0; k < W->in_pad / chunk; ++k)
+            for (unsigned row = 0; row < 16; ++row) {
+                size_t r = block * 16 + row;
+                p[(block * (W->in_pad / chunk) + k) * 16 + row] =
+                    r < W->out
+                        ? (W->packed[r * (W->in_pad * W->bits / 8) + k / 2] >> ((k % 2) * 4)) & 15
+                        : 0;
+            }
+    uint32_t groups = W->in_pad / W->group;
+    float *norms = malloc(blocks * 16 * groups * sizeof(float));
+    if (!norms)
+        abort();
+    for (size_t b = 0; b < blocks; ++b)
+        for (uint32_t g = 0; g < groups; ++g)
+            for (unsigned r = 0; r < 16; ++r)
+                norms[(b * groups + g) * 16 + r] =
+                    b * 16 + r < W->out ? fp16_to_f32(W->norms[(b * 16 + r) * groups + g]) : 0;
+    shuffle_cache_bytes += bytes + norm_bytes;
+    shuffle_matrices[shuffle_count] = (ShuffleMatrix){W->packed, W->out, W->in_pad, p, norms};
+    return &shuffle_matrices[shuffle_count++];
+}
+static int cq_matvec_shuffle(const Needle *m, const CQMat *W, const float *x, float *y) {
+    unsigned chunk = W->bits == 2 ? 2 : 1;
+    int slot = prep_slot(m, x);
+    uint32_t groups = W->in_pad / W->group;
+    ShuffleMatrix *cache = shuffle_matrix(W);
+    if (!cache) return 0;
+    const __m128i zero = _mm_setzero_si128();
+    __m128 ws = _mm_set1_ps(W->bits == 2 ? m->cb2_scale : m->cb4_scale);
+    for (uint32_t block = 0; block < (W->out + 15) / 16; block++) {
+        __m128 acc[4] = {_mm_setzero_ps(), _mm_setzero_ps(), _mm_setzero_ps(), _mm_setzero_ps()};
+        for (uint32_t g = 0; g < groups; g++) {
+            __m128i sum[4] = {zero, zero, zero, zero};
+            for (uint32_t k = 0; k < W->group / chunk; k++) {
+                const uint8_t *p =
+                    cache->data +
+                    ((size_t)block * W->in_pad / chunk + g * W->group / chunk + k) * 16;
+                const int8_t *t = shuffle_lut[slot] + ((size_t)g * W->group / chunk + k) * 32;
+                __m128i indices = _mm_loadu_si128((const __m128i *)p);
+                __m128i lo = _mm_shuffle_epi8(_mm_loadu_si128((const __m128i *)t), indices);
+                __m128i hi = _mm_shuffle_epi8(_mm_loadu_si128((const __m128i *)(t + 16)), indices);
+                __m128i a = _mm_unpacklo_epi8(lo, hi), b = _mm_unpackhi_epi8(lo, hi);
+                __m128i sa = _mm_cmpgt_epi16(zero, a), sb = _mm_cmpgt_epi16(zero, b);
+                sum[0] = _mm_add_epi32(sum[0], _mm_unpacklo_epi16(a, sa));
+                sum[1] = _mm_add_epi32(sum[1], _mm_unpackhi_epi16(a, sa));
+                sum[2] = _mm_add_epi32(sum[2], _mm_unpacklo_epi16(b, sb));
+                sum[3] = _mm_add_epi32(sum[3], _mm_unpackhi_epi16(b, sb));
+            }
+            __m128 xs = _mm_set1_ps(m->xs[slot][g]);
+            for (unsigned j = 0; j < 4; j++) {
+                __m128 norm =
+                    _mm_loadu_ps(cache->norms + ((size_t)block * groups + g) * 16 + j * 4);
+                __m128 value =
+                    _mm_mul_ps(_mm_mul_ps(_mm_mul_ps(_mm_cvtepi32_ps(sum[j]), xs), ws), norm);
+                acc[j] = _mm_add_ps(acc[j], value);
+            }
+        }
+        float out[16];
+        for (unsigned j = 0; j < 4; j++)
+            _mm_storeu_ps(out + j * 4, acc[j]);
+        for (unsigned r = 0; r < 16 && block * 16 + r < W->out; r++)
+            y[block * 16 + r] = out[r];
+    }
+    return 1;
+}
+#endif
 
 #ifdef NEEDLE_LIBNEEDLE_PARITY
 static int cq_is_phi(const Needle *m, const CQMat *w) {
@@ -523,6 +663,9 @@ static void cq_prepare_x(const Needle *m, const CQMat *W, const float *x, float 
         }
 #endif
     }
+#ifdef NEEDLE_SHUFFLE
+    prepare_shuffle(m, W, xh);
+#endif
 }
 
 /* ---- integer matvec: int16 activations x int16-decoded weights ----------
@@ -554,6 +697,18 @@ static inline int64_t dot_i16(const int16_t *a, const int16_t *b, int n) {
     int64_t v = ((int64_t)(hi & 0xFF) << 32) | (uint32_t)lo;
     if (v & 0x8000000000LL) v -= 0x10000000000LL;
     return v;
+}
+#elif defined(NEEDLE_SSE2)
+static inline int64_t dot_i16(const int16_t *a, const int16_t *b, int n) {
+    __m128i sum = _mm_setzero_si128();
+    int i = 0;
+    for (; i + 8 <= n; i += 8)
+        sum = _mm_add_epi32(sum, _mm_madd_epi16(_mm_loadu_si128((const __m128i *)(a+i)), _mm_loadu_si128((const __m128i *)(b+i))));
+    int32_t lanes[4];
+    _mm_storeu_si128((__m128i *)lanes, sum);
+    int64_t result = (int64_t)lanes[0] + lanes[1] + lanes[2] + lanes[3];
+    for (; i < n; i++) result += (int32_t)a[i] * b[i];
+    return result;
 }
 #else
 static inline int64_t dot_i16(const int16_t *a, const int16_t *b, int n) {
@@ -609,10 +764,72 @@ static void cq_matvec_i16(const Needle *m, const CQMat *W, const float *xh,
 }
 
 
+#ifdef NEEDLE_SSE2
+static inline float sum4(__m128 v) {
+    __m128 pair = _mm_add_ps(v, _mm_movehl_ps(v, v));
+    return _mm_cvtss_f32(_mm_add_ss(pair, _mm_shuffle_ps(pair, pair, 1)));
+}
+static void cq_matvec_sse2(const Needle *m, const CQMat *W, const float *xh, float *y) {
+    uint32_t G = W->group, groups = W->in_pad / G, rb = W->in_pad / 4;
+    for (uint32_t block = 0; block < W->out / 4; ++block) {
+        uint32_t r = block * 4;
+        float a0 = 0, a1 = 0, a2 = 0, a3 = 0;
+        const uint8_t *p0 = W->packed + (uint64_t)r * rb, *p1 = p0 + rb, *p2 = p1 + rb,
+                      *p3 = p2 + rb;
+        for (uint32_t g = 0; g < groups; ++g) {
+            __m128 s0 = _mm_setzero_ps(), s1 = s0, s2 = s0, s3 = s0;
+            for (uint32_t k = 0; k < G; k += 4) {
+                uint32_t b = (g * G + k) / 4;
+                __m128 x = _mm_loadu_ps(xh + g * G + k);
+                s0 = _mm_add_ps(s0, _mm_mul_ps(x, _mm_loadu_ps(m->lut2[p0[b]])));
+                s1 = _mm_add_ps(s1, _mm_mul_ps(x, _mm_loadu_ps(m->lut2[p1[b]])));
+                s2 = _mm_add_ps(s2, _mm_mul_ps(x, _mm_loadu_ps(m->lut2[p2[b]])));
+                s3 = _mm_add_ps(s3, _mm_mul_ps(x, _mm_loadu_ps(m->lut2[p3[b]])));
+            }
+            a0 += sum4(s0) * fp16_to_f32(W->norms[(uint64_t)r * groups + g]);
+            a1 += sum4(s1) * fp16_to_f32(W->norms[(uint64_t)(r + 1) * groups + g]);
+            a2 += sum4(s2) * fp16_to_f32(W->norms[(uint64_t)(r + 2) * groups + g]);
+            a3 += sum4(s3) * fp16_to_f32(W->norms[(uint64_t)(r + 3) * groups + g]);
+        }
+        y[r] = a0;
+        y[r + 1] = a1;
+        y[r + 2] = a2;
+        y[r + 3] = a3;
+    }
+    for (uint32_t r = W->out / 4 * 4; r < W->out; ++r) {
+        float acc = 0;
+        for (uint32_t g = 0; g < groups; ++g) {
+            __m128 sum = _mm_setzero_ps();
+            for (uint32_t k = 0; k < G; k += 4)
+                sum = _mm_add_ps(
+                    sum, _mm_mul_ps(
+                             _mm_loadu_ps(xh + g * G + k),
+                             _mm_loadu_ps(m->lut2[W->packed[(uint64_t)r * rb + (g * G + k) / 4]])));
+            acc += sum4(sum) * fp16_to_f32(W->norms[(uint64_t)r * groups + g]);
+        }
+        y[r] = acc;
+    }
+}
+
+#endif
 
 // Host caches follow the engine's existing single-active-model lifetime.
 static void needle_host_cache_clear(void) {
     phi_cache_clear();
+#ifdef NEEDLE_SHUFFLE
+    for (unsigned i = 0; i < shuffle_count; ++i) {
+        free(shuffle_matrices[i].data);
+        free(shuffle_matrices[i].norms);
+    }
+    shuffle_count = 0;
+    shuffle_cache_bytes = 0;
+    for (unsigned s = 0; s < 2; ++s) {
+        free(shuffle_lut[s]);
+        shuffle_lut[s] = NULL;
+        shuffle_capacity[s] = 0;
+        shuffle_valid[s] = 0;
+    }
+#endif
 }
 
 /* 2-bit quad-row kernel: four rows share each activation load. */
@@ -714,8 +931,20 @@ static void cq_matvec(const Needle *m, const CQMat *W, const float *xh,
 #ifdef NEEDLE_LIBNEEDLE_PARITY
     if (cq_is_phi(m, W)) { phi_native(m,W,xh,y); return; }
 #endif
+#ifdef NEEDLE_SHUFFLE
+    if ((W->bits == 2 || W->bits == 4) && shuffle_valid[prep_slot(m, xh)] == W->in_pad &&
+        shuffle_bits[prep_slot(m, xh)] == W->bits && shuffle_group[prep_slot(m, xh)] == W->group) {
+        if (cq_matvec_shuffle(m, W, xh, y)) return;
+    }
+#endif
 #ifdef NEEDLE_LIBNEEDLE_PARITY
     if (W->bits == 2 || W->bits == 4) { cq_matvec_i16(m, W, xh, y); return; }
+#endif
+#ifdef NEEDLE_SSE2
+    if (W->bits == 2) {
+        cq_matvec_sse2(m, W, xh, y);
+        return;
+    }
 #endif
     /* The integer path only wins where a SIMD MAC exists: on scalar cores the
      * weight-decode round trip costs more than it saves, and the host's

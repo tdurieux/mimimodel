@@ -23,3 +23,25 @@ python3 optimization/check-esp-isolation.py
 ```
 
 Host caches, attention scratch, the repetition bitmap, and the prefill boundary are excluded from ESP32. Its original quantization and 160-token prefix cap remain. The isolation check preprocesses the embedded path with header stubs; it does not replace an ESP-IDF build or hardware test.
+
+## x86 optimization branch
+
+This branch adds exact SSE2 integer dot products and an optional SSSE3 shuffle kernel on top of the parity changes. The shuffle matrix cache is capped at 2 MiB. Matrices that exceed the budget use the packed integer kernel. Temporary lookup tables and the inherited MHC weight cache are separate allocations. These desktop allocations remain excluded from ESP32.
+
+```sh
+bash optimization/build-linux.sh sse2
+bash optimization/build-linux.sh ssse3
+bash optimization/build-linux.sh sandybridge
+python3 optimization/parity.py --binary .optimization/needle-sandybridge --oracle optimization/libneedle-oracle.json
+```
+
+Select a target supported by your CPU. `sse2` uses the x86-64 baseline, `ssse3` targets Core 2, and `sandybridge` targets Sandy Bridge. Builds disable floating-point contraction to preserve rounding behavior. Approximate attention and Sinkhorn experiments are excluded. This branch does not claim a measured 2x speedup over WebAssembly for the corrected kernels.
+
+To check the shuffle kernel and its zero-cache fallback:
+
+```sh
+gcc -O2 -march=core2 -DNEEDLE_SHUFFLE -fsanitize=address,undefined optimization/test_parity.c -lm -o .optimization/test-shuffle
+.optimization/test-shuffle
+gcc -O2 -march=core2 -DNEEDLE_SHUFFLE -DNEEDLE_SHUFFLE_CACHE_BYTES=0 -fsanitize=address,undefined optimization/test_parity.c -lm -o .optimization/test-fallback
+.optimization/test-fallback
+```
