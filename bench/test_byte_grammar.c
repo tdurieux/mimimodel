@@ -32,6 +32,12 @@ int main(void) {
     tools[1].params[0].required = 1;
     tools[1].n_params = 1;
 
+    ByteGrammar empty = grammar_for(tools, 2);
+    assert(consume_text(&empty, "[]"));
+    assert(empty.state == BG_DONE);
+    assert(empty.calls == 0);
+    assert(!consume_text(&empty, "[]"));
+
     ByteGrammar valid = grammar_for(tools, 2);
     assert(consume_text(&valid,
         "[{\"name\":\"gpio_on\",\"arguments\":{\"pin\":5}},"
@@ -43,8 +49,35 @@ int main(void) {
         "[{\"name\":\"gpio_on\",\"arguments\":{}}]"));
 
     ByteGrammar repeated_tool = grammar_for(tools, 2);
-    assert(!consume_text(&repeated_tool,
+    assert(consume_text(&repeated_tool,
         "[{\"name\":\"gpio_on\",\"arguments\":{\"pin\":5}},"
         "{\"name\":\"gpio_on\",\"arguments\":{\"pin\":6}}]"));
+    assert(repeated_tool.state == BG_DONE);
+    assert(repeated_tool.calls == 2);
+
+    ByteGrammar single_tool = grammar_for(tools, 1);
+    single_tool.max_calls = 2;
+    assert(consume_text(&single_tool,
+        "[{\"name\":\"gpio_on\",\"arguments\":{\"pin\":5}},"
+        "{\"name\":\"gpio_on\",\"arguments\":{\"pin\":6}}]"));
+    assert(single_tool.state == BG_DONE);
+    assert(single_tool.calls == 2);
+
+    ByteGrammar limited = grammar_for(tools, 1);
+    limited.max_calls = 2;
+    assert(consume_text(&limited,
+        "[{\"name\":\"gpio_on\",\"arguments\":{\"pin\":5}},"
+        "{\"name\":\"gpio_on\",\"arguments\":{\"pin\":6}}"));
+    assert(!consume_text(&limited, ","));
+
+    ByteGrammar trailing_comma = grammar_for(tools, 1);
+    assert(consume_text(&trailing_comma,
+        "[{\"name\":\"gpio_on\",\"arguments\":{\"pin\":5}},"));
+    assert(!consume_text(&trailing_comma, "]"));
+
+    ByteGrammar repeated_missing_required = grammar_for(tools, 1);
+    assert(!consume_text(&repeated_missing_required,
+        "[{\"name\":\"gpio_on\",\"arguments\":{\"pin\":5}},"
+        "{\"name\":\"gpio_on\",\"arguments\":{}}]"));
     return 0;
 }
