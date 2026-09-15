@@ -2516,6 +2516,18 @@ static int text_join(char *out, size_t outsz, const char *const *parts, int n_pa
 /* Run one constrained tool call. Returns length of JSON written to out. */
 int needle_toolcall_sys(Needle *m, const char *system, const char *query,
                         const char *tools_json, char *out, size_t outsz) {
+    /* No available tools is a successful no-op, including on ESP32. */
+    const char *p = tools_json + strspn(tools_json, " \t\r\n");
+    if (*p == '[') {
+        p++;
+        p += strspn(p, " \t\r\n");
+        if (*p == ']' && p[1 + strspn(p + 1, " \t\r\n")] == '\0') {
+            if (outsz < 3) return -1;
+            memcpy(out, "[]", 3);
+            memset(&g_needle_stats, 0, sizeof g_needle_stats);
+            return 2;
+        }
+    }
     static char pruned[8192];
     if (prune_tools(m, query, tools_json, pruned, sizeof pruned)) tools_json = pruned;
 
