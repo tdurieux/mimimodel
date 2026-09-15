@@ -175,7 +175,7 @@ typedef struct {
 
     const uint8_t *blob;   /* whole .cact in memory / mapped flash */
     float codebook[28];    /* cb2[4] | cb3[8] | cb4[16] */
-    float lut2[256][4];
+    __attribute__((aligned(16))) float lut2[256][4];
                                       /* byte -> 4 decoded 2-bit values */
     float lut4[256][2];    /* byte -> 2 decoded 4-bit codebook values */
     /* libneedle uses int8 codebook levels. Store them in int16 lanes for
