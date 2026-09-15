@@ -1689,12 +1689,13 @@ static int bpe_segment(const Needle *m, const char *seg, int seglen,
     return cnt;
 }
 
-int needle_encode(const Needle *m, const char *text, int *out, int max_out) {
+static int encode_with_dummy(const Needle *m, const char *text, int *out, int max_out,
+                             int add_dummy) {
     /* escape spaces to U+2581, optional dummy prefix */
     size_t tl = strlen(text);
     char *esc = (char *)malloc(tl * 3 + 4);
     size_t e = 0;
-    if (m->add_dummy) { memcpy(esc + e, SP_SPACE, 3); e += 3; }
+    if (add_dummy) { memcpy(esc + e, SP_SPACE, 3); e += 3; }
     for (size_t i = 0; i < tl; i++) {
         if (text[i] == ' ') { memcpy(esc + e, SP_SPACE, 3); e += 3; }
         else esc[e++] = text[i];
@@ -1726,6 +1727,10 @@ int needle_encode(const Needle *m, const char *text, int *out, int max_out) {
                        max_out - cnt);
     free(esc);
     return cnt;
+}
+
+int needle_encode(const Needle *m, const char *text, int *out, int max_out) {
+    return encode_with_dummy(m, text, out, max_out, m->add_dummy);
 }
 
 int needle_decode_piece(const Needle *m, int id, char *buf, int buflen) {
@@ -1821,8 +1826,9 @@ static int needle_parse_tools(const char *json, NTool *tools, int max_tools) {
                     memcpy(pr->name, q + 1, pl);
                     pr->name[pl] = 0;
                     const char *ty = js_find(pe, "type");
-                    pr->is_num = ty && (strncmp(ty + 8, "integer", 7) == 0
-                                        || strncmp(ty + 8, "number", 6) == 0);
+                    if (ty) ty += 7 + strspn(ty + 7, " \t\r\n");
+                    pr->is_num = ty && (strncmp(ty, "\"integer\"", 9) == 0
+                                        || strncmp(ty, "\"number\"", 8) == 0);
                     pr->required = 0;
                     t->n_params++;
                     /* skip this param's spec object */
@@ -1858,9 +1864,7 @@ static int needle_parse_tools(const char *json, NTool *tools, int max_tools) {
 
 /* encode without the leading dummy-prefix space (mid-sequence fragments) */
 static int encode_raw(const Needle *m, const char *text, int *out, int max_out) {
-    Needle tmp = *m;            /* shallow: shares tables, flips one flag */
-    tmp.add_dummy = 0;
-    return needle_encode(&tmp, text, out, max_out);
+    return encode_with_dummy(m, text, out, max_out, 0);
 }
 
 typedef struct { const float *logits; uint32_t pos; } DecCtx;
