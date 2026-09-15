@@ -1072,6 +1072,8 @@ void needle_reset(Needle *m, uint32_t max_len) {
     free(m->k_cache); free(m->v_cache); free(m->k_scale); free(m->v_scale);
     free(m->attn_scores);
     free(m->ering); free(m->ering_valid); free(m->hist);
+    m->ering = NULL; m->ering_valid = NULL; m->hist = NULL;
+    m->px_valid = 0;
     m->k_cache = (int8_t *)calloc((size_t)L * KV * m->kv_alloc * hd, 1);
     m->v_cache = (int8_t *)calloc((size_t)L * KV * m->kv_alloc * hd, 1);
     m->k_scale = (float *)calloc((size_t)L * KV * m->kv_alloc, 4);
@@ -1103,29 +1105,29 @@ void needle_reset(Needle *m, uint32_t max_len) {
     m->hist = (int *)malloc(max_len * sizeof(int));
     m->hist_len = 0;
 
-    if (!m->x) {
+    { /* Retry only missing scratch buffers after a partial allocation failure. */
         uint32_t A = m->n_heads * hd;   /* attn width */
-        m->x = (float *)fast_malloc((size_t)n * C * 4);
-        m->nx = (float *)fast_malloc((size_t)n * C * 4);
-        m->u = (float *)fast_malloc(C * 4);
-        m->h = (float *)fast_malloc(C * 4);
-        m->q = (float *)fast_malloc(A * 4);
-        m->k = (float *)fast_malloc((size_t)KV * hd * 4);
-        m->v = (float *)fast_malloc((size_t)KV * hd * 4);
-        m->att_out = (float *)fast_malloc(A * 4);
-        m->xh = (float *)aligned_alloc16((size_t)n * C * 4);  /* >= biggest in_pad */
-        m->xh2 = (float *)aligned_alloc16((size_t)n * C * 4); /* phi-prepared nx */
+        if (!m->x) m->x = (float *)fast_malloc((size_t)n * C * 4);
+        if (!m->nx) m->nx = (float *)fast_malloc((size_t)n * C * 4);
+        if (!m->u) m->u = (float *)fast_malloc(C * 4);
+        if (!m->h) m->h = (float *)fast_malloc(C * 4);
+        if (!m->q) m->q = (float *)fast_malloc(A * 4);
+        if (!m->k) m->k = (float *)fast_malloc((size_t)KV * hd * 4);
+        if (!m->v) m->v = (float *)fast_malloc((size_t)KV * hd * 4);
+        if (!m->att_out) m->att_out = (float *)fast_malloc(A * 4);
+        if (!m->xh) m->xh = (float *)aligned_alloc16((size_t)n * C * 4);  /* >= biggest in_pad */
+        if (!m->xh2) m->xh2 = (float *)aligned_alloc16((size_t)n * C * 4); /* phi-prepared nx */
         for (int s = 0; s < 2; s++) {
             /* ee.vld.128 needs 16-byte alignment; group offsets are multiples
              * of 256 bytes so aligning the base is enough */
-            m->xq[s] = (int16_t *)aligned_alloc16((size_t)n * C * sizeof(int16_t));
-            m->xs[s] = (float *)fast_malloc((size_t)n * C / 8 * sizeof(float));
+            if (!m->xq[s]) m->xq[s] = (int16_t *)aligned_alloc16((size_t)n * C * sizeof(int16_t));
+            if (!m->xs[s]) m->xs[s] = (float *)fast_malloc((size_t)n * C / 8 * sizeof(float));
         }
-        m->z = (float *)fast_malloc(m->hada_n * 4);
-        m->logits = (float *)malloc(m->vocab * 4);         /* cold: PSRAM ok */
-        m->ek = (float *)fast_malloc((size_t)m->n_sites * C * 4);
-        m->ev = (float *)cold_malloc((size_t)m->n_sites * C * 4);
-        m->e = (float *)cold_malloc(C * 4);
+        if (!m->z) m->z = (float *)fast_malloc(m->hada_n * 4);
+        if (!m->logits) m->logits = (float *)malloc(m->vocab * 4);         /* cold: PSRAM ok */
+        if (!m->ek) m->ek = (float *)fast_malloc((size_t)m->n_sites * C * 4);
+        if (!m->ev) m->ev = (float *)cold_malloc((size_t)m->n_sites * C * 4);
+        if (!m->e) m->e = (float *)cold_malloc(C * 4);
     }
     if ((m->n_sites && (!m->ering || !m->ering_valid
                         || !m->px_ering || !m->px_ering_valid))
@@ -1149,6 +1151,11 @@ void needle_reset(Needle *m, uint32_t max_len) {
     uint32_t half = hd / 2;
     m->cosv = (float *)malloc((size_t)max_len * half * 4);
     m->sinv = (float *)malloc((size_t)max_len * half * 4);
+    if (!m->cosv || !m->sinv) {
+        fprintf(stderr, "needle_reset: RoPE allocation failed\n");
+        m->max_len = 0;
+        return;
+    }
     for (uint32_t t = 0; t < max_len; t++)
         for (uint32_t i = 0; i < half; i++) {
             float freq = powf(m->rope_theta, -(float)(2 * i) / hd);
@@ -1694,6 +1701,7 @@ static int encode_with_dummy(const Needle *m, const char *text, int *out, int ma
     /* escape spaces to U+2581, optional dummy prefix */
     size_t tl = strlen(text);
     char *esc = (char *)malloc(tl * 3 + 4);
+    if (!esc) return -1;
     size_t e = 0;
     if (add_dummy) { memcpy(esc + e, SP_SPACE, 3); e += 3; }
     for (size_t i = 0; i < tl; i++) {
@@ -1729,6 +1737,7 @@ static int encode_with_dummy(const Needle *m, const char *text, int *out, int ma
     return cnt;
 }
 
+/* Returns the token count, or -1 if temporary allocation fails. */
 int needle_encode(const Needle *m, const char *text, int *out, int max_out) {
     return encode_with_dummy(m, text, out, max_out, m->add_dummy);
 }
@@ -1892,6 +1901,7 @@ static int dc_pick_scored(Needle *m, DecCtx *dc, const char **cand, int n_cand,
      * heap (PSRAM on ESP32) — cold data, don't burn internal SRAM */
     static float *base = NULL;
     if (!base) base = (float *)malloc(8192 * 4);
+    if (!base) return -1;
     memcpy(base, dc->logits, m->vocab * 4);
     /* Pre-rank by first-token logprob — that costs nothing (we already hold
      * the logits) and lets us teacher-force only the few plausible names
@@ -1901,6 +1911,7 @@ static int dc_pick_scored(Needle *m, DecCtx *dc, const char **cand, int n_cand,
     for (int i = 0; i < n_cand; i++) {
         int ids[24];
         int n = encode_raw(m, cand[i], ids, 24);
+        if (n < 0) return -1;
         first_lp[i] = (n > 0) ? log_softmax_at(base, m->vocab, ids[0]) : -1e30f;
         order[i] = i;
     }
@@ -1917,6 +1928,7 @@ static int dc_pick_scored(Needle *m, DecCtx *dc, const char **cand, int n_cand,
         int i = order[oi];
         int ids[24];
         int n = encode_raw(m, cand[i], ids, 24);
+        if (n < 0) return -1;
         if (n <= 0) continue;
         float lp = log_softmax_at(base, m->vocab, ids[0]);
         const float *lg = NULL;
@@ -1933,6 +1945,7 @@ static int dc_pick_scored(Needle *m, DecCtx *dc, const char **cand, int n_cand,
     {
         int ids[24];
         int n = encode_raw(m, cand[best], ids, 24);
+        if (n < 0) return -1;
         dc->pos = pos0;
         for (int k = 0; k < n; k++) dc_feed(m, dc, ids[k]);
     }
@@ -2429,7 +2442,7 @@ static void bm25_rank(const char *query, char docs[][512], int n, int *order) {
             }
 }
 
-/* Returns 1 and fills `out` when the tool list was pruned, 0 to use it as-is. */
+/* Returns 1 if pruned, 0 to use as-is, or -1 on allocation failure. */
 static int prune_tools(Needle *m, const char *query, const char *tools_json,
                        char *out, size_t outsz) {
     int budget = NEEDLE_TOOLS_BUDGET;
@@ -2438,6 +2451,7 @@ static int prune_tools(Needle *m, const char *query, const char *tools_json,
 
     static int probe[4096];
     int full = needle_encode(m, tools_json, probe, 4096);
+    if (full < 0) return -1;
     if (full <= budget) {
         if (getenv("NEEDLE_DEBUG_RETRIEVAL"))
             fprintf(stderr, "[retrieval] full=%d budget=%d keep=all\n", full, budget);
@@ -2467,7 +2481,9 @@ static int prune_tools(Needle *m, const char *query, const char *tools_json,
         }
         out[o++] = ']';
         out[o] = 0;
-        if ((size_t)needle_encode(m, out, probe, 4096) <= (size_t)budget) break;
+        int count = needle_encode(m, out, probe, 4096);
+        if (count < 0) return -1;
+        if (count <= budget) break;
     }
     if (keep <= NEEDLE_RAG_MIN_K) {
         size_t o = 0;
@@ -2533,7 +2549,9 @@ int needle_toolcall_sys(Needle *m, const char *system, const char *query,
         }
     }
     static char pruned[8192];
-    if (prune_tools(m, query, tools_json, pruned, sizeof pruned)) tools_json = pruned;
+    int pruned_result = prune_tools(m, query, tools_json, pruned, sizeof pruned);
+    if (pruned_result < 0) return -1;
+    if (pruned_result) tools_json = pruned;
 
     static NTool tools[NT_MAX_TOOLS];
     int n_tools = needle_parse_tools(tools_json, tools, NT_MAX_TOOLS);
@@ -2560,7 +2578,9 @@ int needle_toolcall_sys(Needle *m, const char *system, const char *query,
     static int pids[4096], rids[1024];
     pids[0] = (int)m->bos_id;
     int n_pids = 1 + needle_encode(m, prefix, pids + 1, 4095);
+    if (n_pids <= 0) return -1;
     int n_rids = encode_raw(m, rest, rids, 1024);
+    if (n_rids < 0) return -1;
     int n_ids = n_pids + n_rids;
     if (getenv("NEEDLE_DEBUG_IDS")) {
         fprintf(stderr, "[debug] prefix ids:");
@@ -2603,8 +2623,9 @@ int needle_toolcall_sys(Needle *m, const char *system, const char *query,
                 snprintf(system_prefix, sizeof system_prefix,
                          "<|im_start|>system\n%s<|im_end|>\n", system);
                 system_ids[0] = (int)m->bos_id;
-                m->sink_len = 1u + (uint32_t)needle_encode(
-                    m, system_prefix, system_ids + 1, 1023);
+                int count = needle_encode(m, system_prefix, system_ids + 1, 1023);
+                if (count < 0) return -1;
+                m->sink_len = 1u + (uint32_t)count;
             } else m->sink_len = 0;
         } else if (!sink_mode || strcmp(sink_mode, "1") != 0) {
             int cap = sink_mode ? atoi(sink_mode) : NEEDLE_PREFIX_SINK_DEFAULT;
@@ -3081,6 +3102,7 @@ int main(int argc, char **argv) {
     int ids[4096];
     ids[0] = (int)m.bos_id;
     int n_ids = 1 + needle_encode(&m, prompt, ids + 1, 4095);
+    if (n_ids <= 0) { fprintf(stderr, "tokenizer allocation failed\n"); return 1; }
     fprintf(stderr, "prompt tokens: %d\n", n_ids);
     if (getenv("NEEDLE_DEBUG")) {
         fprintf(stderr, "ids:");
@@ -3089,6 +3111,7 @@ int main(int argc, char **argv) {
     }
 
     needle_reset(&m, (uint32_t)(n_ids + max_new));
+    if (m.max_len == 0) return 1;
     double t0 = now_ms();
     const float *logits = NULL;
     FILE *dump = getenv("NEEDLE_DUMP") ? fopen(getenv("NEEDLE_DUMP"), "wb") : NULL;
